@@ -3,7 +3,8 @@ const db = require('./db')(); // db setting
 
 const bkfd2Password = require('pbkdf2-password');
 const hasher = bkfd2Password();
-const jwt = require('jsonwebtoken'); 
+const jwt = require('jsonwebtoken');
+const { error } = require('console');
 
 
 
@@ -22,15 +23,15 @@ app.post('/signup', (req, res) => {
 
         // MySQL에 사용자 정보 저장
         db.query('INSERT INTO users (userId, password, salt, name, phone) VALUES (?, ?, ?, ?, ?)'
-        , [userId, hash, salt, name, phone], (error, results) => {
-            if (error) {
-                console.error('Error registering user:', error);
-                res.status(500).send('Error registering user');
-            } else {
-                console.log('User registered successfully');
-                res.status(201).send('User registered successfully');
-            }
-        });
+            , [userId, hash, salt, name, phone], (error, results) => {
+                if (error) {
+                    console.error('Error registering user:', error);
+                    res.status(500).send('Error registering user');
+                } else {
+                    console.log('User registered successfully');
+                    res.status(201).send('User registered successfully');
+                }
+            });
     });
 });
 // 로그인 엔드포인트
@@ -85,6 +86,63 @@ app.post('/addpet', (req, res) => {
             }
         });
 
+});
+// 사용자 관련 정보(사용자 정보 + 펫 정보) 엔드포인트
+app.post('/getuserinfo', (req, res) => {
+    const { userId } = req.body;
+    console.log(userId);
+    var response = {};
+    // 사용자 정보(id, 이름, 전화번호) 가져오기
+    db.query('SELECT userId, name, phone from users where userId = ?', [userId],
+        (error, results) => {
+            if (error) {
+                console.error('Error fetching user:', error);
+                res.status(500).send('Error fetching user');
+            } else {
+                if (results.length > 0) {
+                    const user = results[0];
+                    if (error) {
+                        console.error(error);
+                        res.status(500).send(error);
+                        return;
+                    }
+                    response.userId = user.userId;
+                    response.name = user.name;
+                    response.phone = user.phone;
+                } else {
+                    console.log('User not found');
+                    res.status(404).send('User not found');
+                }
+            }
+        }
+    );
+    // 펫 정보 가져오기
+    db.query('SELECT petName, breed, age from pet where userId = ?', [userId],
+        (error, results) => {
+            if (error) {
+                console.error('Error fetching user:', error);
+                res.status(500).send('Error fetching user');
+            } else {
+                if (results.length > 0) {
+                    const pet = results[0];
+
+                    if (error) {
+                        console.error(error);
+                        res.status(500).send(error);
+                        return;
+                    }
+                    response.petName = pet.petName;
+                    response.breed = pet.breed;
+                    response.age = pet.age;
+                    
+                    res.json(response);
+                } else {
+                    console.log('Pet not found');
+                    res.status(404).send('Pet not found');
+                }
+            }
+        }
+    );
 });
 const PORT = 3000;
 app.listen(PORT, () => {
