@@ -8,10 +8,10 @@ const jwt = require('jsonwebtoken');
 
 
 // 회원가입 엔드포인트
-app.post('/register', (req, res) => {
+app.post('/signup', (req, res) => {
     const { userId, password, nickname, phone } = req.body;
 
-
+    console.log(userId);
     // 비밀번호 해싱
     hasher({ password: password }, (err, pass, salt, hash) => {
         if (err) {
@@ -56,6 +56,7 @@ app.post('/login', (req, res) => {
 
                     if (hash === user.password) {
                         // 비밀번호가 일치하면 토큰 생성
+                        console.log('성공');
                         const token = jwt.sign({ userId: user.userId, username: user.userId }, '!ddfrf$@df$%^F', { expiresIn: '1h' });
                         res.json({ 'token': token, 'user': results[0].userId });
                     } else {
