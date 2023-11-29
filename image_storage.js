@@ -1,4 +1,4 @@
-// express 세팅
+// 클라이언트에서 넘어온 사진을 저장하는 코드
 module.exports = function () {
     const multer = require('multer');
     const storage = multer.diskStorage({

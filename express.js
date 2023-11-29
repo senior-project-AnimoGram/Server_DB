@@ -8,6 +8,6 @@ module.exports = function () {
     app.use(bodyParser.urlencoded({ extended: false }));
     app.use(bodyParser.json());
     app.use(cors());
-    app.use('/uploads', express.static('uploads'));
+    app.use('/uploads', express.static('uploads')); // 서버내의 정적파일 클라이언트에서 접근하게 해줌
     return app;
 }

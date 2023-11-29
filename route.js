@@ -1,7 +1,7 @@
 
 var app = require('./express')(); // express setting
 const db = require('./db')(); // db setting
-const upload = require('./image_storage')();
+const upload = require('./image_storage')(); // image_starage setting
 
 const bkfd2Password = require('pbkdf2-password');
 const hasher = bkfd2Password();
@@ -165,6 +165,7 @@ app.post('/addpost', upload.single('image'), (req, res) => {
         }
     )
 });
+// /fethposts 엔드포인트
 app.get('/fetchposts', (req, res) => {
     db.query("SELECT * FROM post", (error, results) => {
         console.log(results);
