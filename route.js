@@ -1,11 +1,11 @@
+
 var app = require('./express')(); // express setting
 const db = require('./db')(); // db setting
+const upload = require('./image_storage')();
 
 const bkfd2Password = require('pbkdf2-password');
 const hasher = bkfd2Password();
 const jwt = require('jsonwebtoken');
-const { error } = require('console');
-
 
 
 // 회원가입 엔드포인트
@@ -134,7 +134,7 @@ app.post('/getuserinfo', (req, res) => {
                     response.petName = pet.petName;
                     response.breed = pet.breed;
                     response.age = pet.age;
-                    
+
                     res.json(response);
                 } else {
                     console.log('Pet not found');
@@ -143,6 +143,34 @@ app.post('/getuserinfo', (req, res) => {
             }
         }
     );
+});
+// /addpost 엔드포인트
+app.post('/addpost', upload.single('image'), (req, res) => {
+    // 이미지 업로드 후의 로직
+    console.log('Image uploaded successfully');
+
+    // 업로드된 이미지의 정보는 req.file에서 확인 가능
+    const { filename, path } = req.file;
+    const { title, content, userId } = req.body;
+
+    db.query("INSERT INTO post (userId, title, content, imageName, imagePath) VALUES (?, ?, ?, ?, ?)",
+        [userId, title, content, filename, path], (error, results) => {
+            if (error) {
+                console.error('Error add post: ', error);
+                res.status(500).send('Error add post: ', error);
+            } else {
+                console.log('Add post Success');
+                res.status(200).send('Add post Success');
+            }
+        }
+    )
+});
+app.get('/fetchposts', (req, res) => {
+    db.query("SELECT * FROM post", (error, results) => {
+        console.log(results);
+        res.json(results);
+    });
+    
 });
 const PORT = 3000;
 app.listen(PORT, () => {
