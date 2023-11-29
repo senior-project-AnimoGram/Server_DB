@@ -19,6 +19,5 @@ create table pet(
     age int,
     primary key(userId)
 ) engine = InnoDB;
-
 describe users;
 describe pet;
