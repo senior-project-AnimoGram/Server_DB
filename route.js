@@ -87,7 +87,7 @@ app.post('/addpet', (req, res) => {
         });
 
 });
-// 사용자 관련 정보(사용자 정보 + 펫 정보) 엔드포인트
+// 사용자 관련 정보(사용자 정보 + 펫 정보) 가져오기 엔드포인트
 app.post('/getuserinfo', (req, res) => {
     const { userId } = req.body;
     console.log(userId);
@@ -144,7 +144,7 @@ app.post('/getuserinfo', (req, res) => {
         }
     );
 });
-// /addpost 엔드포인트
+// 글 추가 엔드포인트
 app.post('/addpost', upload.single('image'), (req, res) => {
     // 이미지 업로드 후의 로직
     console.log('Image uploaded successfully');
@@ -165,7 +165,7 @@ app.post('/addpost', upload.single('image'), (req, res) => {
         }
     )
 });
-// /fethposts 엔드포인트
+// 글 가져오기 엔드포인트
 app.get('/fetchposts', (req, res) => { // 글 목록을 최신순으로 불러옴
     db.query("SELECT * FROM post ORDER BY created_at DESC", (error, results) => {
         console.log(results);
