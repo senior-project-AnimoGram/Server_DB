@@ -166,8 +166,8 @@ app.post('/addpost', upload.single('image'), (req, res) => {
     )
 });
 // /fethposts 엔드포인트
-app.get('/fetchposts', (req, res) => {
-    db.query("SELECT * FROM post", (error, results) => {
+app.get('/fetchposts', (req, res) => { // 글 목록을 최신순으로 불러옴
+    db.query("SELECT * FROM post ORDER BY created_at DESC", (error, results) => {
         console.log(results);
         res.json(results);
     });
