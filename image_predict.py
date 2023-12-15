@@ -39,7 +39,7 @@ if __name__ == "__main__":
     #     model = load_model(emotion_model_path)
 
     #테스트
-    image_path = 'Server_DB/coo.webp'
-    model = load_model('Server_DB\model\dog_breed_model.h5')
+    image_path = 'test_image\coo.webp'
+    model = load_model('model\dog_breed_model.h5')
     process_image(image_path, model)
     
