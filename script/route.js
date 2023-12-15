@@ -179,8 +179,8 @@ app.post('/predictimage', upload.single('image'), (req, res) => {
     const imagePath = req.file.path; // 업로드된 파일의 경로
 
     // Python 스크립트 실행
-    const breedProcess = spawn('python', ['image_predict.py', imagePath, 1]);
-    const emotionProcess = spawn('python', ['image_predict.py', imagePath, 2]);
+    const breedProcess = spawn('python', ['../image_predict.py', imagePath, 1]);
+    const emotionProcess = spawn('python', ['../image_predict.py', imagePath, 2]);
 
     let response = {};
 
