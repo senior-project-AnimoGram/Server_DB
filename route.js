@@ -2,6 +2,7 @@
 var app = require('./express')(); // express setting
 const db = require('./db')(); // db setting
 const upload = require('./image_storage')(); // image_starage setting
+const spawn = require('child_process').spawn;
 
 const bkfd2Password = require('pbkdf2-password');
 const hasher = bkfd2Password();
@@ -171,8 +172,60 @@ app.get('/fetchposts', (req, res) => { // 글 목록을 최신순으로 불러�
         console.log(results);
         res.json(results);
     });
-    
+
 });
+
+app.post('/predictimage', upload.single('image'), (req, res) => {
+    const imagePath = req.file.path; // 업로드된 파일의 경로
+
+    // Python 스크립트 실행
+    const breedProcess = spawn('python', ['image_predict.py', imagePath, 1]);
+    const emotionProcess = spawn('python', ['image_predict.py', imagePath, 2]);
+
+    let response = {};
+
+    breedProcess.stdout.on('breed', (data) => {
+        response.breed = data.toString();
+    });
+    breedProcess.stderr.on('breed', (data) => {
+        res.status(500).send(`Error: ${data.toString()}`);
+        try {
+            fs.unlinkSync(imagePath);
+            console.log('File was deleted synchronously');
+        } catch (err) {
+            console.error('Error deleting file synchronously:', err);
+        }
+    });
+
+    emotionProcess.stdout.on('emotion', (data) => {
+        response.emotion = data.toString();
+    });
+    emotionProcess.stderr.on('emotion', (data) => {
+        res.status(500).send(`Error: ${data.toString()}`);
+        try {
+            fs.unlinkSync(imagePath);
+            console.log('File was deleted synchronously');
+        } catch (err) {
+            console.error('Error deleting file synchronously:', err);
+        }
+    });
+
+    // Python 스크립트 실행 완료 후에 이미지 삭제
+    breedProcess.on('close', () => {});
+    emotionProcess.on('close', () => {
+        try {
+            fs.unlinkSync(imagePath);
+            console.log('File was deleted synchronously');
+        } catch (err) {
+            console.error('Error deleting file synchronously:', err);
+        }
+        res.send(response);
+    });
+});
+
+
+
+
 const PORT = 3000;
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
