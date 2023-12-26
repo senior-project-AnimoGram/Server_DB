@@ -148,11 +148,16 @@ app.post('/getuserinfo', (req, res) => {
 });
 // 글 추가 엔드포인트
 app.post('/addpost', upload.single('image'), (req, res) => {
+    var filename, path;
+    if(req.body.flag == 0){
+        filename, path = req.file.filename, req.file.path;
+    }else {
+        path = req.body.filepath;
+        filename = path.substr(7);
+    }
     // 이미지 업로드 후의 로직
     console.log('Image uploaded successfully');
-
     // 업로드된 이미지의 정보는 req.file에서 확인 가능
-    const { filename, path } = req.file;
     const { title, content, userId } = req.body;
 
     db.query("INSERT INTO post (userId, title, content, imageName, imagePath) VALUES (?, ?, ?, ?, ?)",
@@ -170,40 +175,61 @@ app.post('/addpost', upload.single('image'), (req, res) => {
 // 글 가져오기 엔드포인트
 app.get('/fetchposts', (req, res) => { // 글 목록을 최신순으로 불러옴
     db.query("SELECT * FROM post ORDER BY created_at DESC", (error, results) => {
-        console.log(results);
         res.json(results);
     });
 
 });
 
-app.post('/predictimage', upload.single('image'), (req, res) => {
-    const imagePath = req.file.path;
+// app.post('/predictimage', upload.single('image'), (req, res) => {
+//     const imagePath = req.file.path;
 
+//     try {
+//         // Python 스크립트 실행
+//         let result = execSync(`python ../image_predict.py ${imagePath}`).toString().split('\r\n'); // 원하는 결과를 얻기 위해 문자열 파싱
+//         console.log(result);
+//         let breedResult = result[15]; 
+//         let emotionResult = result[19];
+//         let response = {
+//             breed: breedResult,
+//             emotion: emotionResult
+//         };
+
+//         // 이미지 삭제
+//         fs.unlinkSync(imagePath);
+//         console.log('File was deleted synchronously');
+
+//         // 응답 전송
+//         res.send(response);
+//     } catch (error) {
+//         console.error('에러:', error.toString());
+//         res.status(500).send(`Error: ${error.toString()}`);
+//     }
+// });
+
+app.post('/putsticker', upload.single('image'), (req, res) => {
+    const imagePath = req.file.path;
+    const filterIndex = req.body.selectedFilterIndex;
     try {
         // Python 스크립트 실행
-        let result = execSync(`python ../image_predict.py ${imagePath}`).toString().split('\r\n');
-        // 원하는 결과를 얻기 위해 문자열 파싱
-        console.log(result);
-        let breedResult = result[3] 
-        let emotionResult = result[7]
-        let response = {
-            breed: breedResult,
-            emotion: emotionResult
-        };
+        let deco_image_path = execSync(`python ./detectHead.py ${imagePath} ${filterIndex}`)
+        console.log(`결과 ${deco_image_path}`);
 
         // 이미지 삭제
         fs.unlinkSync(imagePath);
         console.log('File was deleted synchronously');
 
         // 응답 전송
-        res.send(response);
+        res.send(deco_image_path);
     } catch (error) {
         console.error('에러:', error.toString());
         res.status(500).send(`Error: ${error.toString()}`);
     }
-});
+})
 
-
+// app.post('/frame',upload.single('image'), (req, res) => {
+//     console.log(req.file);
+//     res.send("Bye");
+// })
 
 
 const PORT = 3000;

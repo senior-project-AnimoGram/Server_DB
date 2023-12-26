@@ -3,7 +3,7 @@ module.exports = function () {
     const multer = require('multer');
     const storage = multer.diskStorage({
         destination: function (req, file, cb) {
-            cb(null, '../uploads/'); // uploads 폴더에 이미지 저장
+            cb(null, 'uploads/'); // uploads 폴더에 이미지 저장
         },
         filename: function (req, file, cb) {
             cb(null, getNowTime() + '_' + file.originalname); // 이미지 파일 이름 설정

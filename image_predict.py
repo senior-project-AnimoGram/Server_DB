@@ -1,35 +1,74 @@
-# image_processing.py
 import sys
 import numpy as np
 from keras.models import load_model
+from keras.preprocessing import image
+import tensorflow as tf
+from keras.applications import EfficientNetB4, Xception, ResNet50
+from keras.layers import GlobalAveragePooling2D
+from keras.layers import Input
+from keras.models import Model
 from PIL import Image
 import os
 os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
 
-breed = ['boston_bull', 'dingo', 'pekinese', 'bluetick', 'golden_retriever', 'bedlington_terrier', 'borzoi', 'basenji', 'scottish_deerhound', 'shetland_sheepdog', 'walker_hound', 'maltese_dog', 'norfolk_terrier', 'african_hunting_dog', 'wire-haired_fox_terrier', 'redbone', 'lakeland_terrier', 'boxer', 'doberman', 'otterhound', 'standard_schnauzer', 'irish_water_spaniel', 'black-and-tan_coonhound', 'cairn', 'affenpinscher', 'labrador_retriever', 'ibizan_hound', 'english_setter', 'weimaraner', 'giant_schnauzer', 'groenendael', 'dhole', 'toy_poodle', 'border_terrier', 'tibetan_terrier', 'norwegian_elkhound', 'shih-tzu', 'irish_terrier', 'kuvasz', 'german_shepherd', 'greater_swiss_mountain_dog', 'basset', 'australian_terrier', 'schipperke', 'rhodesian_ridgeback', 'irish_setter', 'appenzeller', 'bloodhound', 'samoyed', 'miniature_schnauzer', 'brittany_spaniel', 'kelpie', 'papillon', 'border_collie', 'entlebucher', 'collie', 'malamute', 'welsh_springer_spaniel', 'chihuahua', 'saluki', 'pug', 'malinois', 'komondor', 'airedale', 'leonberg', 'mexican_hairless', 'bull_mastiff', 'bernese_mountain_dog', 'american_staffordshire_terrier', 'lhasa', 'cardigan', 'italian_greyhound', 'clumber', 'scotch_terrier', 'afghan_hound', 'old_english_sheepdog', 'saint_bernard', 'miniature_pinscher', 'eskimo_dog', 'irish_wolfhound', 'brabancon_griffon', 'toy_terrier', 'chow', 'flat-coated_retriever', 'norwich_terrier', 'soft-coated_wheaten_terrier', 'staffordshire_bullterrier', 'english_foxhound', 'gordon_setter', 'siberian_husky', 'newfoundland', 'briard', 'chesapeake_bay_retriever', 'dandie_dinmont', 'great_pyrenees', 'beagle', 'vizsla', 'west_highland_white_terrier', 'kerry_blue_terrier', 'whippet', 'sealyham_terrier', 'standard_poodle', 'keeshond', 'japanese_spaniel', 'miniature_poodle', 'pomeranian', 'curly-coated_retriever', 'yorkshire_terrier', 'pembroke', 'great_dane', 'blenheim_spaniel', 'silky_terrier', 'sussex_spaniel', 'german_short-haired_pointer', 'french_bulldog', 'bouvier_des_flandres', 'tibetan_mastiff', 'english_springer', 'cocker_spaniel', 'rottweiler']
+breed = [
+    'labrador_retriever', 'german_shepherd', 'golden_retriever',
+    'bulldog', 'beagle', 'poodle', 'rottweiler',
+    'yorkshire_terrier', 'boxer', 'dachshund',
+    'siberian_husky', 'great_dane', 'doberman_pinscher',
+    'australian_shepherd', 'cavalier_king_charles_spaniel',
+    'shih_tzu', 'pomeranian', 'boston_terrier',
+    'hound', 'bernese_mountain_dog'
+]
 emotion = ['angry', 'sad', 'relaxed', 'happy']
 
-def preprocess_image(image_path, predict_flag):
-    if predict_flag == 1:
-        img_size = 200
-    elif predict_flag == 2:
-        img_size = 224
-    else:
-        raise Exception("예외가 발생했습니다.")
-    
-    image_resized_rgb = image_path.resize((img_size, img_size)).convert('RGB')
+def preprocess_image_emotion(image_path):
+    image = Image.open(image_path)
+    image_resized_rgb = image.resize((224, 224)).convert('RGB')
     image_array_rgb = np.array(image_resized_rgb)
     image_scale_rgb = image_array_rgb.astype("float32") / 255.0
-    return image_scale_rgb.reshape(1, img_size, img_size, 3)
+    return image_scale_rgb.reshape(1, 224, 224, 3)
+
+def preprocess_image_breed(image_path):
+    img = image.load_img(image_path, target_size=(224, 224))  # 이미지 크기를 (224, 224)로 변경
+    img_array = image.img_to_array(img)
+    img_array = np.expand_dims(img_array, axis=0)  # 배치 차원 추가
+    img_array /= 255.0
+
+    # 특징 추출 과정
+    effnet_preprocessor = tf.keras.applications.efficientnet.preprocess_input
+    effnet_features = get_features(EfficientNetB4, effnet_preprocessor, (224, 224, 3), img_array)
+    
+    xception_preprocessor = tf.keras.applications.xception.preprocess_input
+    xception_features = get_features(Xception, xception_preprocessor, (224, 224, 3), img_array)
+    
+    resnet_preprocessor = tf.keras.applications.resnet50.preprocess_input
+    resnet_features = get_features(ResNet50, resnet_preprocessor, (224, 224, 3), img_array)
+
+    # 모든 특징 벡터를 연결
+    final_features = np.concatenate([effnet_features, xception_features, resnet_features], axis=-1)
+    return final_features
+
+def get_features(model_name, model_preprocessor, input_size, data):
+    input_layer = Input(input_size)
+    preprocessor = model_preprocessor(input_layer)
+    base_model = model_name(weights='imagenet', include_top=False, input_shape=input_size)(preprocessor)
+    avg = GlobalAveragePooling2D()(base_model)
+    feature_extractor = Model(inputs=input_layer, outputs=avg)
+    feature_maps = feature_extractor.predict(data, verbose=1)
+    print('Feature maps shape:', feature_maps.shape)
+    return feature_maps
 
 def predict_class(model, image_data):
-    final_pred = model.predict(image_data)[0]
-    return np.argmax(final_pred)
+    final_pred = model.predict(image_data)
+    return np.argmax(final_pred, axis=1)[0]
 
-# 이미지 URL을 전달받아 예측만 하는 함수
+# 이미지를 전달받아 예측만 하는 함수
 def process_image(image_path, model, predict_flag):
-    image = Image.open(image_path)
-    image_data = preprocess_image(image, predict_flag)
+    if predict_flag == 1:
+        image_data = preprocess_image_breed(image_path)
+    else:
+        image_data = preprocess_image_emotion(image_path)
     predicted_class = predict_class(model, image_data)
     if predict_flag == 1:
         print(breed[predicted_class], end='\n')
@@ -42,7 +81,7 @@ if __name__ == "__main__":
 
     image_path = sys.argv[1]
 
-    breed_model_path = '../model/dog_breed_model.h5' 
+    breed_model_path = '../model/best_model.h5' 
     breed_model = load_model(breed_model_path)
 
     emotion_model_path = '../model/dog_emotion_model.h5' 

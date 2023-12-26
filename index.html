@@ -35,7 +35,7 @@
                 img.onload = async function () {
                     // Resize and preprocess the image
                     const tensor = tf.tidy(() => {
-                        const resizedImg = tf.image.resizeBilinear(tf.browser.fromPixels(img), [224, 224]);
+                        const resizedImg = tf.image.resizeBilinear(tf.browser.fromPixels(img), [200, 200]);
                         return resizedImg.expandDims(0).toFloat().div(255.0);
                     });
 
