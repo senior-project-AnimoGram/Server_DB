@@ -1,14 +1,12 @@
-
 var app = require('./express')(); // express setting
 const db = require('./db')(); // db setting
-const upload = require('./image_storage')(); // image_starage setting
+const upload = require('./image_storage')(); // image_storage setting
 const { execSync } = require('child_process');
 const fs = require("fs");
 
 const bkfd2Password = require('pbkdf2-password');
 const hasher = bkfd2Password();
 const jwt = require('jsonwebtoken');
-
 
 // 회원가입 엔드포인트
 app.post('/signup', (req, res) => {
@@ -24,7 +22,7 @@ app.post('/signup', (req, res) => {
         }
 
         // MySQL에 사용자 정보 저장
-        db.query('INSERT INTO users (userId, password, salt, name, phone) VALUES (?, ?, ?, ?, ?)'
+        db.query('INSERT INTO user (user_id, password, salt, nickname, phone) VALUES (?, ?, ?, ?, ?)'
             , [userId, hash, salt, name, phone], (error, results) => {
                 if (error) {
                     console.error('Error registering user:', error);
@@ -36,11 +34,12 @@ app.post('/signup', (req, res) => {
             });
     });
 });
+
 // 로그인 엔드포인트
 app.post('/login', (req, res) => {
     const { userId, password } = req.body;
     // MySQL에서 사용자 정보 가져오기
-    db.query('SELECT * FROM users WHERE userId = ?', [userId], (error, results) => {
+    db.query('SELECT * FROM user WHERE user_id = ?', [userId], (error, results) => {
         if (error) {
             console.error('Error fetching user:', error);
             res.status(500).send('Error fetching user');
@@ -59,8 +58,8 @@ app.post('/login', (req, res) => {
                     if (hash === user.password) {
                         // 비밀번호가 일치하면 토큰 생성
                         console.log('성공');
-                        const token = jwt.sign({ userId: user.userId, password: user.password }, '!ddfrf$@df$%^F', { expiresIn: '1h' });
-                        res.json({ 'token': token, 'userId': results[0].userId, 'name': results[0].name });
+                        const token = jwt.sign({ user_id: user.user_id, password: user.password }, '!ddfrf$@df$%^F', { expiresIn: '1h' });
+                        res.json({ 'token': token, 'userId': results[0].user_id, 'nickname': results[0].nickname });
                     } else {
                         console.log('비밀번호 오류');
                         res.status(401).send('Invalid password');
@@ -73,11 +72,12 @@ app.post('/login', (req, res) => {
         }
     });
 });
+
 // 펫 추가 엔드포인트
 app.post('/addpet', (req, res) => {
     const { userId, petName, breed, age } = req.body;
     // MySQL에 사용자의 펫정보 저장
-    db.query('INSERT INTO pet (userId, petName, breed, age) VALUES (?, ?, ?, ?)'
+    db.query('INSERT INTO pet (user_id, name, breed, age, image) VALUES (?, ?, ?, ?, null)'
         , [userId, petName, breed, age], (error, results) => {
             if (error) {
                 console.error('Error add pet:', error);
@@ -87,15 +87,15 @@ app.post('/addpet', (req, res) => {
                 res.status(201).send('Add pet successfully');
             }
         });
-
 });
+
 // 사용자 관련 정보(사용자 정보 + 펫 정보) 가져오기 엔드포인트
 app.post('/getuserinfo', (req, res) => {
     const { userId } = req.body;
     console.log(userId);
     var response = {};
     // 사용자 정보(id, 이름, 전화번호) 가져오기
-    db.query('SELECT userId, name, phone from users where userId = ?', [userId],
+    db.query('SELECT user_id, name, phone from user where user_id = ?', [userId],
         (error, results) => {
             if (error) {
                 console.error('Error fetching user:', error);
@@ -119,7 +119,7 @@ app.post('/getuserinfo', (req, res) => {
         }
     );
     // 펫 정보 가져오기
-    db.query('SELECT petName, breed, age from pet where userId = ?', [userId],
+    db.query('SELECT petName, breed, age from pet where user_id = ?', [userId],
         (error, results) => {
             if (error) {
                 console.error('Error fetching user:', error);
@@ -146,22 +146,25 @@ app.post('/getuserinfo', (req, res) => {
         }
     );
 });
+
 // 글 추가 엔드포인트
 app.post('/addpost', upload.single('image'), (req, res) => {
     var filename, path;
-    if(req.body.flag == 0){
-        filename, path = req.file.filename, req.file.path;
-    }else {
+    if (req.body.flag == 0) {
+        filename = req.file.filename;
+        path = req.file.path;
+    } else {
         path = req.body.filepath;
         filename = path.substr(7);
     }
-    // 이미지 업로드 후의 로직
-    console.log('Image uploaded successfully');
     // 업로드된 이미지의 정보는 req.file에서 확인 가능
     const { title, content, userId } = req.body;
+    var address = req.body.address;
 
-    db.query("INSERT INTO post (userId, title, content, imageName, imagePath) VALUES (?, ?, ?, ?, ?)",
-        [userId, title, content, filename, path], (error, results) => {
+    address = address.indexOf(',') !== -1 ? address.substring(0, address.indexOf(',')) : address;
+
+    db.query("INSERT INTO post (user_id, title, content, imageName, imagePath, address) VALUES (?, ?, ?, ?, ?, ?)",
+        [userId, title, content, filename, path, address], (error, results) => {
             if (error) {
                 console.error('Error add post: ', error);
                 res.status(500).send('Error add post: ', error);
@@ -172,13 +175,26 @@ app.post('/addpost', upload.single('image'), (req, res) => {
         }
     )
 });
+
 // 글 가져오기 엔드포인트
 app.get('/fetchposts', (req, res) => { // 글 목록을 최신순으로 불러옴
     db.query("SELECT * FROM post ORDER BY created_at DESC", (error, results) => {
         res.json(results);
     });
-
 });
+
+// getAddress 엔드포인트
+app.get('/getAddress', (req, res) => {
+    db.query("SELECT address, emotion FROM post", (error, results) => {
+        if (error) {
+            console.error('Error fetching addresses:', error);
+            res.status(500).send('Error fetching addresses');
+        } else {
+            res.json(results);
+        }
+    });
+});
+
 
 // app.post('/predictimage', upload.single('image'), (req, res) => {
 //     const imagePath = req.file.path;
@@ -187,7 +203,7 @@ app.get('/fetchposts', (req, res) => { // 글 목록을 최신순으로 불러�
 //         // Python 스크립트 실행
 //         let result = execSync(`python ../image_predict.py ${imagePath}`).toString().split('\r\n'); // 원하는 결과를 얻기 위해 문자열 파싱
 //         console.log(result);
-//         let breedResult = result[15]; 
+//         let breedResult = result[15];
 //         let emotionResult = result[19];
 //         let response = {
 //             breed: breedResult,
@@ -230,7 +246,6 @@ app.post('/putsticker', upload.single('image'), (req, res) => {
 //     console.log(req.file);
 //     res.send("Bye");
 // })
-
 
 const PORT = 3000;
 app.listen(PORT, () => {

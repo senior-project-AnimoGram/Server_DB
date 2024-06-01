@@ -4,8 +4,8 @@ module.exports = function () {
     var db = mysql.createConnection({
         host: '127.0.0.1',
         user: 'root',
-        password: 'gachon3456',
-        database: 'o2',
+        password: '0000',
+        database: 'animogram',
     });
     db.connect(function (err) {
         if (err) throw err;
